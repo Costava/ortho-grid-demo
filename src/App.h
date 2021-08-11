@@ -5,7 +5,7 @@
 
 #include "SDL2/SDL.h"
 
-#include "V3f.h"
+#include "V3d.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +19,7 @@ typedef struct {
 
     // Right-handed coordinate system. Positive z is down. Haha.
 
-    V3f cameraPos; // Camera position.
+    V3d cameraPos; // Camera position.
     // Angle in radians of horizontal look angle.
     // 0        = Looking in positive x direction
     // PI / 2.0 = Looking in positive y direction

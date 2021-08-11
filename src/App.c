@@ -3,7 +3,7 @@
 #include "Clock.h"
 #include "M_PI.h"
 #include "Sdlu.h"
-#include "V3f.h"
+#include "V3d.h"
 
 void App_Init(App *const app) {
     Sdlu_Init(SDL_INIT_VIDEO);
@@ -17,7 +17,7 @@ void App_Init(App *const app) {
     app->renderer = Sdlu_CreateRenderer(app->window, -1, SDL_RENDERER_ACCELERATED);
     app->quit = false;
 
-    app->cameraPos = (V3f) {500.0, 500.0, -500.0};
+    app->cameraPos = (V3d) {500.0, 500.0, -500.0};
     app->horizLookRads = 5.0 * M_PI / 4.0;
     app->vertLookRads = M_PI / 4.0;
 
@@ -110,12 +110,12 @@ static void PollEvents(App *const app, const double ddeltaNs) {
 // by the given vectors.
 // Use the app's camera position.
 // Assume the look vectors are unit magnitude.
-static V3f OrthoProject(App *app, V3f point, V3f lookRight, V3f lookUp) {
-    V3f relativePoint = V3f_Sub(point, app->cameraPos);
+static V3d OrthoProject(App *app, V3d point, V3d lookRight, V3d lookUp) {
+    V3d relativePoint = V3d_Sub(point, app->cameraPos);
 
-    return (V3f) {
-        V3f_Dot(relativePoint, lookRight),
-        V3f_Dot(relativePoint, lookUp),
+    return (V3d) {
+        V3d_Dot(relativePoint, lookRight),
+        V3d_Dot(relativePoint, lookUp),
         0.0
     };
 }
@@ -124,10 +124,10 @@ static V3f OrthoProject(App *app, V3f point, V3f lookRight, V3f lookUp) {
 // as a vector where [0.0, 0.0] means top left pixel of screen
 // and [1.0, 1.0] means bottom right pixel of screen.
 // Use the app's camera position and projection plane dimensions.
-static V3f PointToScreenProportions(App *app, V3f point, V3f lookRight, V3f lookUp) {
-    V3f projected = OrthoProject(app, point, lookRight, lookUp);
+static V3d PointToScreenProportions(App *app, V3d point, V3d lookRight, V3d lookUp) {
+    V3d projected = OrthoProject(app, point, lookRight, lookUp);
 
-    return (V3f) {
+    return (V3d) {
         (projected.x + (app->projPlaneWidth / 2.0)) / app->projPlaneWidth,
         (projected.y + (app->projPlaneHeight / 2.0)) / app->projPlaneHeight,
         0.0
@@ -145,15 +145,15 @@ typedef struct MaybeV2i {
     V2i value;
 } MaybeV2i;
 
-static MaybeV2i PointToPixel(App *app, V3f point, V3f lookForward, V3f lookRight, V3f lookUp) {
-    V3f camToPoint = V3f_Sub(point, app->cameraPos);
-    V3f unitCamToPoint = V3f_Unit(camToPoint);
-    if (V3f_Dot(lookForward, unitCamToPoint) <= 0.0) {
+static MaybeV2i PointToPixel(App *app, V3d point, V3d lookForward, V3d lookRight, V3d lookUp) {
+    V3d camToPoint = V3d_Sub(point, app->cameraPos);
+    V3d unitCamToPoint = V3d_Unit(camToPoint);
+    if (V3d_Dot(lookForward, unitCamToPoint) <= 0.0) {
         // Point is behind projection plane. Cannot be seen.
         return (MaybeV2i) { false };
     }
 
-    V3f screenProps = PointToScreenProportions(app, point, lookRight, lookUp);
+    V3d screenProps = PointToScreenProportions(app, point, lookRight, lookUp);
 
     if (screenProps.x < 0.0 || screenProps.y < 0.0 || screenProps.x > 1.0 || screenProps.y > 1.0) {
         return (MaybeV2i) { false };
@@ -174,7 +174,7 @@ static MaybeV2i PointToPixel(App *app, V3f point, V3f lookForward, V3f lookRight
 }
 
 // // Currently not used.
-// static void MaybeDrawPoint(App *app, V3f point, V3f look, V3f lookRight, V3f lookUp) {
+// static void MaybeDrawPoint(App *app, V3d point, V3d look, V3d lookRight, V3d lookUp) {
 //     MaybeV2i maybePixel = PointToPixel(app, point, look, lookRight, lookUp);
 //
 //     if (maybePixel.hasValue) {
@@ -188,8 +188,8 @@ static MaybeV2i PointToPixel(App *app, V3f point, V3f lookForward, V3f lookRight
 
 // Converting spherical coordinates to a vector.
 // radius = 1.0 so not shown and no need to normalize the vector.
-static inline V3f SphericalToCartesian(const double horizLookRads, const double vertLookRads) {
-    return (V3f) {
+static inline V3d SphericalToCartesian(const double horizLookRads, const double vertLookRads) {
+    return (V3d) {
         sin(vertLookRads) * cos(horizLookRads),
         sin(vertLookRads) * sin(horizLookRads),
         cos(vertLookRads)
@@ -215,27 +215,27 @@ void App_Run(App *const app) {
         PollEvents(app, ddeltaNs);
 
         // Direction camera is looking.
-        V3f look = SphericalToCartesian(app->horizLookRads, app->vertLookRads);
+        V3d look = SphericalToCartesian(app->horizLookRads, app->vertLookRads);
 
         // Calculate the up vector.
         const double lookUpRads = app->vertLookRads - (M_PI / 2.0);
-        V3f lookUp = SphericalToCartesian(app->horizLookRads, lookUpRads);
+        V3d lookUp = SphericalToCartesian(app->horizLookRads, lookUpRads);
 
-        V3f xyForward = (V3f) {
+        V3d xyForward = (V3d) {
             cos(app->horizLookRads),
             sin(app->horizLookRads),
             0.0
         };
 
         const double rightRads = app->horizLookRads + (M_PI / 2.0);
-        V3f xyRight = (V3f) {
+        V3d xyRight = (V3d) {
             cos(rightRads),
             sin(rightRads),
             0.0
         };
 
         // Assume camera never has roll (only pitch and yaw).
-        V3f lookRight = xyRight;
+        V3d lookRight = xyRight;
 
         const uint8_t *const kbState = SDL_GetKeyboardState(NULL);
 
@@ -245,19 +245,19 @@ void App_Run(App *const app) {
         // Movement in xy plane.
 
         if (kbState[SDL_SCANCODE_W] == 1) {
-            app->cameraPos = V3f_Add(app->cameraPos, V3f_Mul(xyForward, moveFactor * ddeltaNs));
+            app->cameraPos = V3d_Add(app->cameraPos, V3d_Mul(xyForward, moveFactor * ddeltaNs));
         }
 
         if (kbState[SDL_SCANCODE_S] == 1) {
-            app->cameraPos = V3f_Sub(app->cameraPos, V3f_Mul(xyForward, moveFactor * ddeltaNs));
+            app->cameraPos = V3d_Sub(app->cameraPos, V3d_Mul(xyForward, moveFactor * ddeltaNs));
         }
 
         if (kbState[SDL_SCANCODE_A] == 1) {
-            app->cameraPos = V3f_Sub(app->cameraPos, V3f_Mul(xyRight, moveFactor * ddeltaNs));
+            app->cameraPos = V3d_Sub(app->cameraPos, V3d_Mul(xyRight, moveFactor * ddeltaNs));
         }
 
         if (kbState[SDL_SCANCODE_D] == 1) {
-            app->cameraPos = V3f_Add(app->cameraPos, V3f_Mul(xyRight, moveFactor * ddeltaNs));
+            app->cameraPos = V3d_Add(app->cameraPos, V3d_Mul(xyRight, moveFactor * ddeltaNs));
         }
 
         // Movement up and down.
@@ -290,8 +290,8 @@ void App_Run(App *const app) {
         // Draw lines on xy plane parallel to x-axis.
         for (double y = 0.0; y <= gridHeight; y += cellWidth) {
             // The start and end points of the line in world space.
-            V3f worldStart = (V3f) {0.0, y, 0.0};
-            V3f worldEnd = (V3f) {gridWidth, y, 0.0};
+            V3d worldStart = (V3d) {0.0, y, 0.0};
+            V3d worldEnd = (V3d) {gridWidth, y, 0.0};
 
             MaybeV2i maybeStart = PointToPixel(app, worldStart, look, lookRight, lookUp);
 
@@ -313,8 +313,8 @@ void App_Run(App *const app) {
         // Draw lines on xy plane parallel to y-axis.
         for (double x = 0.0; x <= gridWidth; x += cellWidth) {
             // The start and end points of the line in world space.
-            V3f worldStart = (V3f) {x, 0.0, 0.0};
-            V3f worldEnd = (V3f) {x, gridHeight, 0.0};
+            V3d worldStart = (V3d) {x, 0.0, 0.0};
+            V3d worldEnd = (V3d) {x, gridHeight, 0.0};
 
             MaybeV2i maybeStart = PointToPixel(app, worldStart, look, lookRight, lookUp);
 
@@ -335,16 +335,16 @@ void App_Run(App *const app) {
 
         // // Draw 4 different-colored points near world origin.
         // Sdlu_SetRenderDrawColor(app->renderer, 255, 255, 255, 255);
-        // MaybeDrawPoint(app, (V3f) {0.0, 0.0, 0.0}, look, lookRight, lookUp);
+        // MaybeDrawPoint(app, (V3d) {0.0, 0.0, 0.0}, look, lookRight, lookUp);
         //
         // Sdlu_SetRenderDrawColor(app->renderer, 255, 0, 0, 255);
-        // MaybeDrawPoint(app, (V3f) {100.0, 0.0,  0.0}, look, lookRight, lookUp);
+        // MaybeDrawPoint(app, (V3d) {100.0, 0.0,  0.0}, look, lookRight, lookUp);
         //
         // Sdlu_SetRenderDrawColor(app->renderer, 0, 255, 0, 255);
-        // MaybeDrawPoint(app, (V3f) {100.0, 100.0, 0.0}, look, lookRight, lookUp);
+        // MaybeDrawPoint(app, (V3d) {100.0, 100.0, 0.0}, look, lookRight, lookUp);
         //
         // Sdlu_SetRenderDrawColor(app->renderer, 0, 0, 255, 255);
-        // MaybeDrawPoint(app, (V3f) {0.0, 100.0, 0.0}, look, lookRight, lookUp);
+        // MaybeDrawPoint(app, (V3d) {0.0, 100.0, 0.0}, look, lookRight, lookUp);
 
         SDL_RenderPresent(app->renderer);
 
