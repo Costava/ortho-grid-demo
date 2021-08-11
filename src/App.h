@@ -28,6 +28,10 @@ typedef struct {
     // 0        = Looking in positive z direction
     // PI / 2.0 = Looking parallel to xy plane
     double vertLookRads;
+
+    // Dimensions of projection plane.
+    double projPlaneWidth;
+    double projPlaneHeight;
 } App;
 
 // Initialize `app`.

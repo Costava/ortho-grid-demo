@@ -205,3 +205,26 @@ void Sdlu_SetRenderDrawColor(SDL_Renderer *renderer,
         exit(1);
     }
 }
+
+void Sdlu_RenderDrawPoint(SDL_Renderer *renderer, int x, int y) {
+    const int code = SDL_RenderDrawPoint(renderer, x, y);
+
+    if (code != 0) {
+        fprintf(stderr, "%s: SDL_RenderDrawPoint returned %d instead of 0. "
+            "[x: %d] [y: %d] [Error: %s]\n",
+            __func__, code, x, y, SDL_GetError());
+
+        exit(1);
+    }
+}
+
+void Sdlu_SetRelativeMouseMode(SDL_bool enabled) {
+    const int code = SDL_SetRelativeMouseMode(enabled);
+
+    if (code != 0) {
+        fprintf(stderr, "%s: SDL_SetRelativeMouseMode(%d) returned %d instead of 0. Error: %s\n",
+            __func__, enabled, code, SDL_GetError());
+
+        exit(1);
+    }
+}

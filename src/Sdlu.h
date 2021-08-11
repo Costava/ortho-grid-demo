@@ -74,6 +74,12 @@ void Sdlu_ToggleFullscreenFlag(SDL_Window *w, uint32_t fullscreenFlag);
 void Sdlu_SetRenderDrawColor(SDL_Renderer *renderer,
     uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
+// SDL_RenderDrawPoint but, if error, print to `stderr` and exit.
+void Sdlu_RenderDrawPoint(SDL_Renderer *renderer, int x, int y);
+
+// SDL_SetRelativeMouseMode but, if error, print to `stderr` and exit.
+void Sdlu_SetRelativeMouseMode(SDL_bool enabled);
+
 #ifdef __cplusplus
 }
 #endif
