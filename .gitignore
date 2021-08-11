@@ -1,0 +1,9 @@
+# .gitignore
+
+#################### Generated
+*.bin
+*.o
+obj
+
+#################### Media
+screenshots
