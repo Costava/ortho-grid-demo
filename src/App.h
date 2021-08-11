@@ -5,6 +5,8 @@
 
 #include "SDL2/SDL.h"
 
+#include "V3f.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,6 +16,18 @@ typedef struct {
     SDL_Renderer *renderer;
 
     bool quit;
+
+    // Right-handed coordinate system. Positive z is down. Haha.
+
+    V3f cameraPos; // Camera position.
+    // Angle in radians of horizontal look angle.
+    // 0        = Looking in positive x direction
+    // PI / 2.0 = Looking in positive y direction
+    double horizLookRads;
+    // Angle in radians of vertical look angle.
+    // 0        = Looking in positive z direction
+    // PI / 2.0 = Looking parallel to xy plane
+    double vertLookRads;
 } App;
 
 // Initialize `app`.

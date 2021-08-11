@@ -70,6 +70,10 @@ void Sdlu_SetWindowFullscreen(SDL_Window *w, uint32_t flags);
 // If error, print to `stderr` and exit.
 void Sdlu_ToggleFullscreenFlag(SDL_Window *w, uint32_t fullscreenFlag);
 
+// SDL_SetRenderDrawColor but, if error, print to `stderr` and exit.
+void Sdlu_SetRenderDrawColor(SDL_Renderer *renderer,
+    uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
 #ifdef __cplusplus
 }
 #endif
