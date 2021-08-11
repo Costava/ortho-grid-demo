@@ -1,7 +1,8 @@
 #ifndef V3F
 #define V3F
 
-// Vector with 3 double members.
+// Vector with 3 double fields
+// Should probably be renamed to V3d
 
 #include <math.h> // sqrt
 

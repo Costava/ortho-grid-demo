@@ -40,7 +40,7 @@ void App_Init(App *const app);
 // Run the app until user quits.
 void App_Run(App *const app);
 
-// Deinitialize `app`.
+// Deinitialize `app`. Clean up internals.
 void App_Deinit(App *const app);
 
 #ifdef __cplusplus

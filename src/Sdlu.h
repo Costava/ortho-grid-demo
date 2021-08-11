@@ -77,6 +77,9 @@ void Sdlu_SetRenderDrawColor(SDL_Renderer *renderer,
 // SDL_RenderDrawPoint but, if error, print to `stderr` and exit.
 void Sdlu_RenderDrawPoint(SDL_Renderer *renderer, int x, int y);
 
+// SDL_RenderDrawLine but, if error, print to `stderr` and exit.
+void Sdlu_RenderDrawLine(SDL_Renderer *renderer, int x1, int y1, int x2, int y2);
+
 // SDL_SetRelativeMouseMode but, if error, print to `stderr` and exit.
 void Sdlu_SetRelativeMouseMode(SDL_bool enabled);
 

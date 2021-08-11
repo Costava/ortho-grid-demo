@@ -218,6 +218,18 @@ void Sdlu_RenderDrawPoint(SDL_Renderer *renderer, int x, int y) {
     }
 }
 
+void Sdlu_RenderDrawLine(SDL_Renderer *renderer, int x1, int y1, int x2, int y2) {
+    const int code = SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+
+    if (code != 0) {
+        fprintf(stderr, "%s: SDL_RenderDrawLine returned %d instead of 0. "
+            "[x1: %d] [y1: %d] [x2: %d] [y2: %d] [Error: %s]\n",
+            __func__, code, x1, y1, x2, y2, SDL_GetError());
+
+        exit(1);
+    }
+}
+
 void Sdlu_SetRelativeMouseMode(SDL_bool enabled) {
     const int code = SDL_SetRelativeMouseMode(enabled);
 

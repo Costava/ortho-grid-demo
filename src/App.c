@@ -5,7 +5,6 @@
 #include "Sdlu.h"
 #include "V3f.h"
 
-
 void App_Init(App *const app) {
     Sdlu_Init(SDL_INIT_VIDEO);
 
@@ -18,9 +17,9 @@ void App_Init(App *const app) {
     app->renderer = Sdlu_CreateRenderer(app->window, -1, SDL_RENDERER_ACCELERATED);
     app->quit = false;
 
-    app->cameraPos = (V3f) {0.0, 200.0, 0.0};
-    app->horizLookRads = 3.0 * M_PI / 2.0; // Looking in negative y direction.
-    app->vertLookRads = M_PI / 2.0; // Looking parallel to xy plane.
+    app->cameraPos = (V3f) {500.0, 500.0, -500.0};
+    app->horizLookRads = 5.0 * M_PI / 4.0;
+    app->vertLookRads = M_PI / 4.0;
 
     app->projPlaneWidth = 800.0;
     app->projPlaneHeight = 600.0;
@@ -57,7 +56,7 @@ static void PollEvents(App *const app, const double ddeltaNs) {
             }
             case SDL_MOUSEMOTION:
             {
-                const double mouseSens = 0.3e-7;
+                const double mouseSens = 0.6e-8;
 
                 app->horizLookRads +=
                     mouseSens * event.motion.xrel * ddeltaNs;
@@ -147,11 +146,10 @@ typedef struct MaybeV2i {
 } MaybeV2i;
 
 static MaybeV2i PointToPixel(App *app, V3f point, V3f lookForward, V3f lookRight, V3f lookUp) {
-    // Cannot see point if behind projection plane.
-
     V3f camToPoint = V3f_Sub(point, app->cameraPos);
     V3f unitCamToPoint = V3f_Unit(camToPoint);
     if (V3f_Dot(lookForward, unitCamToPoint) <= 0.0) {
+        // Point is behind projection plane. Cannot be seen.
         return (MaybeV2i) { false };
     }
 
@@ -175,17 +173,18 @@ static MaybeV2i PointToPixel(App *app, V3f point, V3f lookForward, V3f lookRight
     };
 }
 
-static void MaybeDrawPoint(App *app, V3f point, V3f look, V3f lookRight, V3f lookUp) {
-    MaybeV2i maybePixel = PointToPixel(app, point, look, lookRight, lookUp);
-
-    if (maybePixel.hasValue) {
-        fprintf(stdout, "maybePixel: (%d, %d)\n",
-            maybePixel.value.x, maybePixel.value.y);
-
-        Sdlu_RenderDrawPoint(
-            app->renderer, maybePixel.value.x, maybePixel.value.y);
-    }
-}
+// // Currently not used.
+// static void MaybeDrawPoint(App *app, V3f point, V3f look, V3f lookRight, V3f lookUp) {
+//     MaybeV2i maybePixel = PointToPixel(app, point, look, lookRight, lookUp);
+//
+//     if (maybePixel.hasValue) {
+//         fprintf(stdout, "maybePixel: (%d, %d)\n",
+//             maybePixel.value.x, maybePixel.value.y);
+//
+//         Sdlu_RenderDrawPoint(
+//             app->renderer, maybePixel.value.x, maybePixel.value.y);
+//     }
+// }
 
 // Converting spherical coordinates to a vector.
 // radius = 1.0 so not shown and no need to normalize the vector.
@@ -241,7 +240,7 @@ void App_Run(App *const app) {
         const uint8_t *const kbState = SDL_GetKeyboardState(NULL);
 
         // Movement speed.
-        const double moveFactor = 0.0000001;
+        const double moveFactor = 0.0000003;
 
         // Movement in xy plane.
 
@@ -278,20 +277,74 @@ void App_Run(App *const app) {
 
         // Render
 
-        Sdlu_SetRenderDrawColor(app->renderer, 0, 0, 0, 255);
+        // Fill screen with solid color.
+        Sdlu_SetRenderDrawColor(app->renderer, 255, 255, 255, 255);
         Sdlu_RenderFillRect(app->renderer, NULL);
 
-        Sdlu_SetRenderDrawColor(app->renderer, 255, 255, 255, 255);
-        MaybeDrawPoint(app, (V3f) {0.0, 0.0, 0.0}, look, lookRight, lookUp);
+        const double cellWidth = 22.0;
+        const double gridWidth = cellWidth * 22.0;
+        const double gridHeight = cellWidth * 11.0;
 
-        Sdlu_SetRenderDrawColor(app->renderer, 255, 0, 0, 255);
-        MaybeDrawPoint(app, (V3f) {100.0, 0.0,  0.0}, look, lookRight, lookUp);
+        Sdlu_SetRenderDrawColor(app->renderer, 55, 55, 255, 255);
 
-        Sdlu_SetRenderDrawColor(app->renderer, 0, 255, 0, 255);
-        MaybeDrawPoint(app, (V3f) {100.0, 100.0, 0.0}, look, lookRight, lookUp);
+        // Draw lines on xy plane parallel to x-axis.
+        for (double y = 0.0; y <= gridHeight; y += cellWidth) {
+            // The start and end points of the line in world space.
+            V3f worldStart = (V3f) {0.0, y, 0.0};
+            V3f worldEnd = (V3f) {gridWidth, y, 0.0};
 
-        Sdlu_SetRenderDrawColor(app->renderer, 0, 0, 255, 255);
-        MaybeDrawPoint(app, (V3f) {0.0, 100.0, 0.0}, look, lookRight, lookUp);
+            MaybeV2i maybeStart = PointToPixel(app, worldStart, look, lookRight, lookUp);
+
+            if (!maybeStart.hasValue) {
+                continue;
+            }
+
+            MaybeV2i maybeEnd = PointToPixel(app, worldEnd, look, lookRight, lookUp);
+
+            if (!maybeEnd.hasValue) {
+                continue;
+            }
+
+            Sdlu_RenderDrawLine(app->renderer,
+                maybeStart.value.x, maybeStart.value.y,
+                maybeEnd.value.x, maybeEnd.value.y);
+        }
+
+        // Draw lines on xy plane parallel to y-axis.
+        for (double x = 0.0; x <= gridWidth; x += cellWidth) {
+            // The start and end points of the line in world space.
+            V3f worldStart = (V3f) {x, 0.0, 0.0};
+            V3f worldEnd = (V3f) {x, gridHeight, 0.0};
+
+            MaybeV2i maybeStart = PointToPixel(app, worldStart, look, lookRight, lookUp);
+
+            if (!maybeStart.hasValue) {
+                continue;
+            }
+
+            MaybeV2i maybeEnd = PointToPixel(app, worldEnd, look, lookRight, lookUp);
+
+            if (!maybeEnd.hasValue) {
+                continue;
+            }
+
+            Sdlu_RenderDrawLine(app->renderer,
+                maybeStart.value.x, maybeStart.value.y,
+                maybeEnd.value.x, maybeEnd.value.y);
+        }
+
+        // // Draw 4 different-colored points near world origin.
+        // Sdlu_SetRenderDrawColor(app->renderer, 255, 255, 255, 255);
+        // MaybeDrawPoint(app, (V3f) {0.0, 0.0, 0.0}, look, lookRight, lookUp);
+        //
+        // Sdlu_SetRenderDrawColor(app->renderer, 255, 0, 0, 255);
+        // MaybeDrawPoint(app, (V3f) {100.0, 0.0,  0.0}, look, lookRight, lookUp);
+        //
+        // Sdlu_SetRenderDrawColor(app->renderer, 0, 255, 0, 255);
+        // MaybeDrawPoint(app, (V3f) {100.0, 100.0, 0.0}, look, lookRight, lookUp);
+        //
+        // Sdlu_SetRenderDrawColor(app->renderer, 0, 0, 255, 255);
+        // MaybeDrawPoint(app, (V3f) {0.0, 100.0, 0.0}, look, lookRight, lookUp);
 
         SDL_RenderPresent(app->renderer);
 
