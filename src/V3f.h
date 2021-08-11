@@ -65,7 +65,7 @@ static inline struct V3f V3f_Unit(const struct V3f a) {
 
 // Return midpoint of a and b
 static inline struct V3f V3f_Midpoint(const struct V3f a, const struct V3f b) {
-    return V3f_Div(V3f_Add(a, b), 2.0f);
+    return V3f_Div(V3f_Add(a, b), 2.0);
 }
 
 // Return dot product of a and b
