@@ -32,6 +32,13 @@ typedef struct {
     // Dimensions of projection plane.
     double projPlaneWidth;
     double projPlaneHeight;
+
+    // For scaling the projection plane.
+    double projPlaneFactor;
+
+    // Dimensions of projection plane before scaling.
+    double baseProjPlaneWidth;
+    double baseProjPlaneHeight;
 } App;
 
 // Initialize `app`.

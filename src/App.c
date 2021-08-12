@@ -5,13 +5,21 @@
 #include "Sdlu.h"
 #include "V3d.h"
 
+static void UpdateProjPlaneDimensions(App *const app) {
+    app->projPlaneWidth = app->baseProjPlaneWidth * app->projPlaneFactor;
+    app->projPlaneHeight = app->baseProjPlaneHeight * app->projPlaneFactor;
+}
+
 void App_Init(App *const app) {
     Sdlu_Init(SDL_INIT_VIDEO);
+
+    const int windowWidth = 800;
+    const int windowHeight = 600;
 
     app->window = Sdlu_CreateWindow(
         "Application",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        800, 600,
+        windowWidth, windowHeight,
         SDL_WINDOW_RESIZABLE);
 
     app->renderer = Sdlu_CreateRenderer(app->window, -1, SDL_RENDERER_ACCELERATED);
@@ -21,8 +29,11 @@ void App_Init(App *const app) {
     app->horizLookRads = 5.0 * M_PI / 4.0;
     app->vertLookRads = M_PI / 4.0;
 
-    app->projPlaneWidth = 800.0;
-    app->projPlaneHeight = 600.0;
+    app->baseProjPlaneWidth = windowWidth;
+    app->baseProjPlaneHeight = windowHeight;
+    app->projPlaneFactor = 1.0;
+
+    UpdateProjPlaneDimensions(app);
 
     Sdlu_SetRelativeMouseMode(SDL_TRUE);
 }
@@ -45,8 +56,10 @@ static void PollEvents(App *const app, const double ddeltaNs) {
 
                         Sdlu_GetRendererOutputSize(app->renderer, &screenX, &screenY);
 
-                        app->projPlaneWidth = screenX;
-                        app->projPlaneHeight = screenY;
+                        app->baseProjPlaneWidth = screenX;
+                        app->baseProjPlaneHeight = screenY;
+
+                        UpdateProjPlaneDimensions(app);
 
                         break;
                     }
@@ -84,6 +97,20 @@ static void PollEvents(App *const app, const double ddeltaNs) {
                 else if (app->vertLookRads > maxVertLookRads) {
                     app->vertLookRads = maxVertLookRads;
                 }
+
+                break;
+            }
+            case SDL_MOUSEWHEEL:
+            {
+                app->projPlaneFactor -= 0.1 * event.wheel.y;
+
+                const double minFactor = 0.01;
+
+                if (app->projPlaneFactor < minFactor) {
+                    app->projPlaneFactor = minFactor;
+                }
+
+                UpdateProjPlaneDimensions(app);
 
                 break;
             }
