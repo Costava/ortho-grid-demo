@@ -17,7 +17,7 @@ void App_Init(App *const app) {
     const int windowHeight = 600;
 
     app->window = Sdlu_CreateWindow(
-        "Application",
+        "Orthographic Grid Demo",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         windowWidth, windowHeight,
         SDL_WINDOW_RESIZABLE);
