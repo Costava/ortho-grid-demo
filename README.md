@@ -1,8 +1,9 @@
-# README
+# Orthographic Grid Demo
 
 Real-time rendering of a grid using an orthographic projection.  
-Camera can be moved with WASD, space bar, and Q.  
-Use mouse to rotate camera.
+Move camera with WASD, space bar, and Q.  
+Rotate camera with mouse.  
+Zoom in/out with mouse wheel.
 
 The makefile has `build` and `clean` recipes.
 
