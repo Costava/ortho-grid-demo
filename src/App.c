@@ -40,10 +40,14 @@ static void PollEvents(App *const app, const double ddeltaNs) {
                 switch (event.window.event) {
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
                     {
-                        // app->surface = sdlu_get_window_surface(app->window);
-                        //
-                        // sdlu_fill_surface(app->surface, 27, 60, 20);
-                        // sdlu_update_window_surface(app->window);
+                        int screenX;
+                        int screenY;
+
+                        Sdlu_GetRendererOutputSize(app->renderer, &screenX, &screenY);
+
+                        app->projPlaneWidth = screenX;
+                        app->projPlaneHeight = screenY;
+
                         break;
                     }
                 }
