@@ -159,8 +159,8 @@ static V3d PointToScreenProportions(App *app, V3d point, V3d lookRight, V3d look
     V3d projected = OrthoProject(app, point, lookRight, lookUp);
 
     return (V3d) {
-        (projected.x + (app->projPlaneWidth / 2.0)) / app->projPlaneWidth,
-        (projected.y + (app->projPlaneHeight / 2.0)) / app->projPlaneHeight,
+        (+projected.x + (app->projPlaneWidth  / 2.0)) / app->projPlaneWidth,
+        (-projected.y + (app->projPlaneHeight / 2.0)) / app->projPlaneHeight,
         0.0
     };
 }
@@ -249,7 +249,7 @@ void App_Run(App *const app) {
         V3d look = SphericalToCartesian(app->horizLookRads, app->vertLookRads);
 
         // Calculate the up vector.
-        const double lookUpRads = app->vertLookRads - (M_PI / 2.0);
+        const double lookUpRads = app->vertLookRads + (M_PI / 2.0);
         V3d lookUp = SphericalToCartesian(app->horizLookRads, lookUpRads);
 
         V3d xyForward = (V3d) {
