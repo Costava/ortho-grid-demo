@@ -152,8 +152,8 @@ static V3d OrthoProject(App *app, V3d point, V3d lookRight, V3d lookUp) {
 }
 
 // Return the point projected onto the screen
-// as a vector where [0.0, 0.0] means top left pixel of screen
-// and [1.0, 1.0] means bottom right pixel of screen.
+// as a vector where [0.0, 0.0] means top-left of top-left pixel of screen
+// and [1.0, 1.0] means bottom-right of bottom-right pixel of screen.
 // Use the app's camera position and projection plane dimensions.
 static V3d PointToScreenProportions(App *app, V3d point, V3d lookRight, V3d lookUp) {
     V3d projected = OrthoProject(app, point, lookRight, lookUp);
