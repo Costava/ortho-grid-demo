@@ -15,5 +15,7 @@ Dependencies:
 
 Not currently accepting contributions. Feel free to open an issue.
 
+![Orthographic grid animated gif](./img/demo.gif)
+
 ## License
 BSD 2-Clause License. See file `LICENSE.txt`.
