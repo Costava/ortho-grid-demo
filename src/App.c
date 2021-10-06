@@ -63,6 +63,16 @@ static void PollEvents(App *const app, const double ddeltaNs) {
 
                         break;
                     }
+                    case SDL_WINDOWEVENT_FOCUS_GAINED:
+                    {
+                        Sdlu_SetRelativeMouseMode(SDL_TRUE);
+                        break;
+                    }
+                    case SDL_WINDOWEVENT_FOCUS_LOST:
+                    {
+                        Sdlu_SetRelativeMouseMode(SDL_FALSE);
+                        break;
+                    }
                 }
 
                 break;
@@ -73,7 +83,7 @@ static void PollEvents(App *const app, const double ddeltaNs) {
             }
             case SDL_MOUSEMOTION:
             {
-                const double mouseSens = 0.6e-8;
+                const double mouseSens = 0.1e-9;
 
                 app->horizLookRads +=
                     mouseSens * event.motion.xrel * ddeltaNs;
@@ -127,6 +137,23 @@ static void PollEvents(App *const app, const double ddeltaNs) {
                             Sdlu_ToggleFullscreenFlag(app->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
                         }
 
+                        break;
+                    }
+                    case SDLK_f:
+                    {
+                        // Snap to nearest isometric view.
+
+                        // Looking down at 45 degree angle.
+                        app->vertLookRads = M_PI / 4.0;
+
+                        // Snap horiz angle to nearest 90 deg
+                        // (offset by 45 deg from 0 deg direction)
+
+                        double rads = app->horizLookRads - (M_PI / 4.0);
+                        rads /= (M_PI / 2.0);
+                        rads = round(rads) * M_PI / 2.0;
+
+                        app->horizLookRads = rads + (M_PI / 4.0);
                         break;
                     }
                 }
@@ -229,15 +256,23 @@ static inline V3d SphericalToCartesian(const double horizLookRads, const double 
 
 void App_Run(App *const app) {
     uint64_t oldTimeNs = Clock_GetTimeNs();
+    uint64_t accumulatedNs = 0;
+    const uint64_t periodNs = 1000000000 / 60;
 
     while (!app->quit) {
         const uint64_t newTimeNs = Clock_GetTimeNs();
-        const uint64_t deltaNs = newTimeNs - oldTimeNs;
-        const double ddeltaNs = (double)deltaNs;
+        const uint64_t addNs = newTimeNs - oldTimeNs;
+        accumulatedNs += addNs;
 
-        if (deltaNs == 0) {
+        if (accumulatedNs < periodNs) {
             continue;
         }
+        else {
+            accumulatedNs -= periodNs;
+        }
+
+        const uint64_t deltaNs = periodNs;
+        const double ddeltaNs = (double)deltaNs;
 
         // const double fps = 1000000000.0 / (double)deltaNs;
         // printf("fps: %lf\n", fps);
@@ -271,7 +306,7 @@ void App_Run(App *const app) {
         const uint8_t *const kbState = SDL_GetKeyboardState(NULL);
 
         // Movement speed.
-        const double moveFactor = 0.0000003;
+        const double moveFactor = 0.0000000012;
 
         // Movement in xy plane.
 
@@ -301,10 +336,10 @@ void App_Run(App *const app) {
             app->cameraPos.z += moveFactor * ddeltaNs;
         }
 
-        fprintf(stdout, "Look angles: (%lf, %lf)\n",
-            app->horizLookRads, app->vertLookRads);
-        printf("app->cameraPos: (%lf, %lf, %lf)\n",
-            app->cameraPos.x, app->cameraPos.y, app->cameraPos.z);
+        // fprintf(stdout, "Look angles: (%lf, %lf)\n",
+        //     app->horizLookRads, app->vertLookRads);
+        // printf("app->cameraPos: (%lf, %lf, %lf)\n",
+        //     app->cameraPos.x, app->cameraPos.y, app->cameraPos.z);
 
         // Render
 
