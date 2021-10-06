@@ -1,9 +1,69 @@
 #include "App.h"
 
+#include <time.h>
+
 #include "Clock.h"
 #include "M_PI.h"
 #include "Sdlu.h"
 #include "V3d.h"
+
+// Save .bmp image of given renderer to given path.
+// Print to stderr if error.
+static void SaveBmp(SDL_Renderer *const renderer, const char *const path) {
+    int w;
+    int h;
+    Sdlu_GetRendererOutputSize(renderer, &w, &h);
+
+    // https://wiki.libsdl.org/SDL_CreateRGBSurface
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+    const Uint32 rmask = 0xff000000;
+    const Uint32 gmask = 0x00ff0000;
+    const Uint32 bmask = 0x0000ff00;
+    const Uint32 amask = 0x000000ff;
+#else
+    const Uint32 rmask = 0x000000ff;
+    const Uint32 gmask = 0x0000ff00;
+    const Uint32 bmask = 0x00ff0000;
+    const Uint32 amask = 0xff000000;
+#endif
+
+    SDL_Surface *const surface = SDL_CreateRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask);
+
+    if (surface == NULL) {
+        fprintf(stderr, "FAILED TO SAVE SCREENSHOT. "
+            "SDL_CreateRGBSurface error: %s\n", SDL_GetError());
+
+        return;
+    }
+
+    const int rrp_code = SDL_RenderReadPixels(renderer, NULL,
+        surface->format->format,
+        surface->pixels,
+        surface->pitch);
+
+    if (rrp_code != 0) {
+        fprintf(stderr, "FAILED TO SAVE SCREENSHOT. "
+            "SDL_RenderReadPixels error: %d: %s\n",
+            rrp_code, SDL_GetError());
+
+        goto cleanup;
+    }
+
+    const int sbmp_code = SDL_SaveBMP(surface, path);
+
+    if (sbmp_code != 0) {
+        fprintf(stderr, "FAILED TO SAVE SCREENSHOT. "
+            "SDL_SaveBMP error: %d: %s\n",
+            sbmp_code, SDL_GetError());
+
+        goto cleanup;
+    }
+
+    // printf("Saved screenshot: %s\n", path);
+
+    cleanup:
+    SDL_FreeSurface(surface);
+}
 
 static void UpdateProjPlaneDimensions(App *const app) {
     app->projPlaneWidth = app->baseProjPlaneWidth * app->projPlaneFactor;
@@ -24,6 +84,7 @@ void App_Init(App *const app) {
 
     app->renderer = Sdlu_CreateRenderer(app->window, -1, SDL_RENDERER_ACCELERATED);
     app->quit = false;
+    app->recording = false;
 
     app->cameraPos = (V3d) {500.0, 500.0, -500.0};
     app->horizLookRads = 5.0 * M_PI / 4.0;
@@ -38,7 +99,23 @@ void App_Init(App *const app) {
     Sdlu_SetRelativeMouseMode(SDL_TRUE);
 }
 
+typedef struct RelativeMouseMotion {
+    Sint32 xrel;
+    Sint32 yrel;
+} RelativeMouseMotion;
+
+typedef struct MaybeRelativeMouseMotion {
+    bool hasValue;
+    RelativeMouseMotion value;
+} MaybeRelativeMouseMotion;
+
 static void PollEvents(App *const app, const double ddeltaNs) {
+    // If multiple mousemotion events happen during one frame,
+    //  we sum the relative motion and act once on the sum.
+    // Otherwise we would be using the ddeltaNs multiple times (wrong).
+    MaybeRelativeMouseMotion motion = { .hasValue = false };
+    uint32_t numMouseMotionEvents = 0;
+
     SDL_Event event;
     while (SDL_PollEvent(&event) != 0) {
         switch (event.type) {
@@ -83,30 +160,23 @@ static void PollEvents(App *const app, const double ddeltaNs) {
             }
             case SDL_MOUSEMOTION:
             {
-                const double mouseSens = 0.1e-9;
-
-                app->horizLookRads +=
-                    mouseSens * event.motion.xrel * ddeltaNs;
-                app->vertLookRads -=
-                    mouseSens * event.motion.yrel * ddeltaNs;
-
-                // Normalize horizLookRads to range (-2pi, 2pi)
-                app->horizLookRads = fmod(app->horizLookRads, 2.0 * M_PI);
-                // Normalize horizLookRads to range [-pi, pi]
-                if (app->horizLookRads < -M_PI)
-                    { app->horizLookRads += 2.0 * M_PI; }
-                else if (app->horizLookRads > M_PI)
-                    { app->horizLookRads -= 2.0 * M_PI; }
-
-                // Clamp vertLookRads
-                const double minVertLookRads = 0.00001;
-                const double maxVertLookRads = M_PI - minVertLookRads;
-                if (app->vertLookRads < minVertLookRads) {
-                    app->vertLookRads = minVertLookRads;
+                if (!motion.hasValue) {
+                    motion = (MaybeRelativeMouseMotion) {
+                        .hasValue = true,
+                        .value = {
+                            .xrel = event.motion.xrel,
+                            .yrel = event.motion.yrel
+                        }
+                    };
                 }
-                else if (app->vertLookRads > maxVertLookRads) {
-                    app->vertLookRads = maxVertLookRads;
+                else {
+                    motion.value.xrel += event.motion.xrel;
+                    motion.value.yrel += event.motion.yrel;
                 }
+
+                // Assume it never overflows
+                // (safe to assume and of low consequence)
+                numMouseMotionEvents += 1;
 
                 break;
             }
@@ -156,10 +226,69 @@ static void PollEvents(App *const app, const double ddeltaNs) {
                         app->horizLookRads = rads + (M_PI / 4.0);
                         break;
                     }
+                    case SDLK_r:
+                    {
+                        if (!app->recording) {
+                            // Reset frame number.
+                            app->frameNum = 1;
+
+                            // Get new recordingId.
+
+                            struct timespec ts;
+                            if (timespec_get(&ts, TIME_UTC) == 0) {
+                                fprintf(stderr, "FAILED TO START RECORDING. "
+                                    " timespec_get error\n");
+                                break;
+                            }
+
+                            app->recordingId = ts.tv_sec;
+
+                            fprintf(stdout, "Starting recording.\n");
+                        }
+                        else {
+                            fprintf(stdout, "Stopping recording.\n");
+                        }
+
+                        // Toggle recording.
+                        app->recording = !app->recording;
+                        break;
+                    }
                 }
 
                 break;
             }
+        }
+    }
+
+    // // While recording, multiple may happen during one frame.
+    // if (numMouseMotionEvents > 1) {
+    //     fprintf(stdout, "numMouseMotionEvents: %d\n", numMouseMotionEvents);
+    // }
+
+    if (motion.hasValue) {
+        const double mouseSens = 0.1e-9;
+
+        app->horizLookRads +=
+            mouseSens * motion.value.xrel * ddeltaNs;
+        app->vertLookRads -=
+            mouseSens * motion.value.yrel * ddeltaNs;
+
+        // Normalize horizLookRads to range (-2pi, 2pi)
+        app->horizLookRads = fmod(app->horizLookRads, 2.0 * M_PI);
+        // Normalize horizLookRads to range [-pi, pi]
+        if (app->horizLookRads < -M_PI)
+            { app->horizLookRads += 2.0 * M_PI; }
+        else if (app->horizLookRads > M_PI)
+            { app->horizLookRads -= 2.0 * M_PI; }
+
+        // Clamp vertLookRads
+        const double minVertLookRads = 0.00001;
+        const double maxVertLookRads = M_PI - minVertLookRads;
+        if (app->vertLookRads < minVertLookRads) {
+            app->vertLookRads = minVertLookRads;
+        }
+        else if (app->vertLookRads > maxVertLookRads) {
+            app->vertLookRads = maxVertLookRads;
         }
     }
 }
@@ -265,7 +394,7 @@ void App_Run(App *const app) {
         accumulatedNs += addNs;
 
         if (accumulatedNs < periodNs) {
-            continue;
+            goto end_of_while_loop;
         }
         else {
             accumulatedNs -= periodNs;
@@ -274,9 +403,10 @@ void App_Run(App *const app) {
         const uint64_t deltaNs = periodNs;
         const double ddeltaNs = (double)deltaNs;
 
-        // const double fps = 1000000000.0 / (double)deltaNs;
+        // const double fps = 1000000000.0 / ddeltaNs;
         // printf("fps: %lf\n", fps);
         // printf("oldTimeNs: %ld newTimeNs: %ld\n", oldTimeNs, newTimeNs);
+        // printf("accumulatedNs: %ld\n", accumulatedNs);
 
         PollEvents(app, ddeltaNs);
 
@@ -306,7 +436,7 @@ void App_Run(App *const app) {
         const uint8_t *const kbState = SDL_GetKeyboardState(NULL);
 
         // Movement speed.
-        const double moveFactor = 0.0000000012;
+        const double moveFactor = 0.0000005;
 
         // Movement in xy plane.
 
@@ -414,6 +544,18 @@ void App_Run(App *const app) {
 
         SDL_RenderPresent(app->renderer);
 
+        if (app->recording) {
+            #define APP_FRAME_PATH_LEN 1024
+            char path[APP_FRAME_PATH_LEN];
+            snprintf(path, APP_FRAME_PATH_LEN, "screenshots/frame_%ld_%d.bmp",
+                app->recordingId, app->frameNum);
+
+            SaveBmp(app->renderer, path);
+
+            app->frameNum += 1;
+        }
+
+        end_of_while_loop:
         oldTimeNs = newTimeNs;
     }
 }

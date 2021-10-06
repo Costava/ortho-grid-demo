@@ -2,6 +2,7 @@
 #define APP_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "SDL2/SDL.h"
 
@@ -16,6 +17,9 @@ typedef struct {
     SDL_Renderer *renderer;
 
     bool quit;
+    bool recording;     // Whether saving each frame.
+    time_t recordingId; // Used in frame file names so the frames are grouped.
+    uint32_t frameNum;  // Start at 1.
 
     // Right-handed coordinate system. Positive z is down. Haha.
 

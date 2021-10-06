@@ -18,6 +18,6 @@ clean:
 $(MAIN_EXE): ./main/main.c ./src/*.c ./src/*.h
 	$(CC) ./main/main.c ./src/*.c \
 	      --output $@ \
-	      -std=c11 -g -I ./src \
+	      -std=c11 -O3 -I ./src \
 	      -Wall -Wextra -Wconversion \
-	      -lm -lSDL2 -lSDL2_image
+	      -lm -lSDL2
